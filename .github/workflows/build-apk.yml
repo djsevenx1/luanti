@@ -26,6 +26,28 @@ jobs:
       - name: Build APKs
         run: cd android && ./gradlew assemblerelease
 
+      - name: Sign APKs (debug keystore)
+        run: |
+          APK_DIR="android/app/build/outputs/apk/release"
+          BT_DIR="$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | tail -1)"
+          KEYSTORE="$HOME/.android/debug.keystore"
+          # 若无 debug keystore 则用 keytool 生成
+          if [ ! -f "$KEYSTORE" ]; then
+            keytool -genkeypair -v -keystore "$KEYSTORE" -storepass android \
+              -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 \
+              -validity 10000 -dname "CN=Debug,O=Debug,C=US"
+          fi
+          for apk in "$APK_DIR"/*-unsigned.apk; do
+            [ -f "$apk" ] || continue
+            out="${apk/-unsigned/}"
+            "$BT_DIR/zipalign" -f 4 "$apk" "${apk}.aligned"
+            "$BT_DIR/apksigner" sign \
+              --ks "$KEYSTORE" --ks-pass pass:android \
+              --key-pass pass:android --key-alias androiddebugkey \
+              --out "$out" "${apk}.aligned"
+            echo "已签名: $out"
+          done
+
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -41,12 +63,11 @@ jobs:
         run: |
           TAG="${{ github.ref_name }}"
           APK_DIR="android/app/build/outputs/apk/release"
+          APKS=$(ls "$APK_DIR"/*.apk 2>/dev/null | grep -v -- '-unsigned' | tr '\n' ' ')
           if gh release view "$TAG" >/dev/null 2>&1; then
-            for apk in "$APK_DIR"/*.apk; do
-              gh release upload "$TAG" "$apk" --clobber
-            done
+            for apk in $APKS; do gh release upload "$TAG" "$apk" --clobber; done
           else
-            gh release create "$TAG" "$APK_DIR"/*.apk \
+            gh release create "$TAG" $APKS \
               --title "$TAG" \
               --generate-notes \
               --target "${{ github.sha }}"
