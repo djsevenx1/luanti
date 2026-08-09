@@ -50,7 +50,7 @@ jobs:
             "$BT_DIR/zipalign" -f 4 "$apk" "${apk}.aligned"
             "$BT_DIR/apksigner" sign \
               --ks "$KEYSTORE" --ks-pass pass:android \
-              --key-pass pass:android --key-alias androiddebugkey \
+              --key-pass pass:android --ks-key-alias androiddebugkey \
               --out "$out" "${apk}.aligned"
             echo "已签名: $out"
           done
