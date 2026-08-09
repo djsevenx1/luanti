@@ -109,6 +109,10 @@ tasks.register("prepareAssets") {
 		copy {
 			from "${projRoot}/textures/base/pack" into "${assetsFolder}/textures/base/pack"
 		}
+		// 打包方块世界游戏（让 APK 自带可玩的游戏）
+		copy {
+			from "${projRoot}/games/minecraft" into "${assetsFolder}/games/minecraft"
+		}
 		copy {
 			from "${localeFolder}" into "${assetsFolder}/locale"
 		}
